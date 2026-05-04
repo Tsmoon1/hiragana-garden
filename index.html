@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hiragana Garden</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar" aria-label="Study overview">
+        <div>
+          <p class="eyebrow">Hiragana Garden</p>
+          <h1>Grow the 46 basic hiragana one row at a time.</h1>
+        </div>
+        <div class="stats">
+          <div>
+            <span id="masteredCount">0</span>
+            <small>completed</small>
+          </div>
+          <div>
+            <span id="dueCount">0</span>
+            <small>trouble</small>
+          </div>
+          <div>
+            <span id="activeRowName">あ row</span>
+            <small>focus</small>
+          </div>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="Study modes">
+        <button class="tab active" data-view="today">Today</button>
+        <button class="tab" data-view="learn">Flashcards</button>
+        <button class="tab" data-view="quiz">Typing Quiz</button>
+        <button class="tab" data-view="draw">Draw</button>
+        <button class="tab" data-view="progress">Progress</button>
+      </nav>
+
+      <section class="layout">
+        <aside class="panel rows-panel">
+          <div class="panel-heading">
+            <h2>Rows</h2>
+            <button id="resetProgress" class="icon-button" title="Reset progress" aria-label="Reset progress">↺</button>
+          </div>
+          <div id="rowList" class="row-list"></div>
+        </aside>
+
+        <section class="main-panel">
+          <section id="todayView" class="view active" aria-label="Today">
+            <div class="today-grid">
+              <article class="today-card">
+                <div class="card-meta">
+                  <span>Today</span>
+                  <span id="dailyGoalText">0/5 completed</span>
+                </div>
+                <h2>Choose a practice path</h2>
+                <div class="choice-grid">
+                  <button class="choice-button" data-session="new">
+                    <strong>Learn New</strong>
+                    <span>Pick the next unfinished character in this row.</span>
+                  </button>
+                  <button class="choice-button" data-session="quiz">
+                    <strong>Quiz Me</strong>
+                    <span>Type answers for the selected row.</span>
+                  </button>
+                  <button class="choice-button" data-session="draw">
+                    <strong>Draw</strong>
+                    <span>Trace until the match reaches 95%.</span>
+                  </button>
+                  <button class="choice-button" data-session="review">
+                    <strong>Review</strong>
+                    <span>Practice completed characters again.</span>
+                  </button>
+                  <button class="choice-button" data-session="trouble">
+                    <strong>Trouble Characters</strong>
+                    <span>Focus on missed or messy characters.</span>
+                  </button>
+                </div>
+              </article>
+
+              <article class="guided-card">
+                <div class="card-meta">
+                  <span id="sessionModeLabel">Guided character loop</span>
+                  <span id="sessionStepLabel">learn → type → draw</span>
+                </div>
+                <div id="sessionCharacter" class="session-character">あ</div>
+                <div id="sessionRomaji" class="session-romaji">a</div>
+                <p id="sessionMnemonic" class="mnemonic"></p>
+                <div class="stroke-guide">
+                  <h2>Stroke Guide</h2>
+                  <p id="sessionStrokeGuide"></p>
+                </div>
+                <p id="sessionFeedback" class="feedback" aria-live="polite"></p>
+                <div class="button-row">
+                  <button id="sessionPracticeTyping" class="secondary">Type It</button>
+                  <button id="sessionPracticeDrawing" class="secondary">Draw It</button>
+                  <button id="sessionComplete" class="primary">Complete</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section id="learnView" class="view" aria-label="Flashcards">
+            <div class="card-stage">
+              <article class="study-card">
+                <div class="card-meta">
+                  <span id="learnRow">あ row</span>
+                  <span id="learnStatus">new</span>
+                </div>
+                <button id="flashcard" class="flashcard" aria-label="Reveal flashcard answer">
+                  <span id="learnKana" class="kana">あ</span>
+                  <span id="learnAnswer" class="answer hidden">a</span>
+                </button>
+                <p id="learnMnemonic" class="mnemonic"></p>
+                <div class="button-row">
+                  <button id="againCard" class="secondary">Again</button>
+                  <button id="goodCard" class="primary">I knew it</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section id="quizView" class="view" aria-label="Typing quiz">
+            <div class="quiz-grid">
+              <article class="quiz-card">
+                <div class="card-meta">
+                  <span id="quizModeLabel">Kana to romaji</span>
+                  <button id="swapQuizMode" class="secondary small">Swap</button>
+                </div>
+                <div id="quizPrompt" class="quiz-prompt">あ</div>
+                <form id="quizForm" autocomplete="off">
+                  <label for="quizInput" id="quizInputLabel">Type the romaji</label>
+                  <input id="quizInput" name="answer" type="text" inputmode="latin" />
+                  <button class="primary" type="submit">Check</button>
+                </form>
+                <p id="quizFeedback" class="feedback" aria-live="polite"></p>
+              </article>
+              <article class="hint-card">
+                <h2>Memory Hint</h2>
+                <p id="quizMnemonic"></p>
+              </article>
+            </div>
+          </section>
+
+          <section id="drawView" class="view" aria-label="Drawing practice">
+            <div class="draw-layout">
+              <article class="draw-card">
+                <div class="card-meta">
+                  <span id="drawPromptLabel">Draw this kana</span>
+                  <span id="drawTargetRomaji">a</span>
+                </div>
+                <div class="draw-board">
+                  <canvas id="guideCanvas" width="420" height="420" aria-hidden="true"></canvas>
+                  <canvas id="drawCanvas" width="420" height="420" aria-label="Drawing area"></canvas>
+                </div>
+                <div class="draw-controls">
+                  <meter id="drawMeter" min="0" max="100" value="0"></meter>
+                  <strong id="drawScore">0%</strong>
+                  <button id="clearDrawing" class="secondary">Clear</button>
+                  <button id="nextDrawing" class="primary" disabled>Next</button>
+                </div>
+                <p id="drawFeedback" class="feedback" aria-live="polite">Trace the blossom-pink guide until your match reaches 95%.</p>
+              </article>
+              <article class="hint-card">
+                <h2 id="drawKanaPreview">あ</h2>
+                <p id="drawMnemonic"></p>
+              </article>
+            </div>
+          </section>
+
+          <section id="progressView" class="view" aria-label="Progress">
+            <div class="progress-header">
+              <h2>Hiragana Progress</h2>
+              <p>Choose any row whenever you want. Completed characters stay saved in this browser.</p>
+            </div>
+            <section class="trouble-panel" aria-label="Trouble characters">
+              <h2>Trouble Characters</h2>
+              <div id="troubleGrid" class="trouble-grid"></div>
+            </section>
+            <div id="progressGrid" class="progress-grid"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
