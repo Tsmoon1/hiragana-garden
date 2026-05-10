@@ -179,6 +179,7 @@ const els = {
   quizForm: document.querySelector("#quizForm"),
   quizInput: document.querySelector("#quizInput"),
   quizInputLabel: document.querySelector("#quizInputLabel"),
+  kanaPad: document.querySelector("#kanaPad"),
   quizFeedback: document.querySelector("#quizFeedback"),
   quizMnemonic: document.querySelector("#quizMnemonic"),
   guideCanvas: document.querySelector("#guideCanvas"),
@@ -568,9 +569,28 @@ function renderQuiz() {
   els.quizModeLabel.textContent = reverse ? "Romaji to kana" : "Kana to romaji";
   els.quizPrompt.textContent = reverse ? card.romaji : card.kana;
   els.quizPrompt.classList.toggle("romaji", reverse);
-  els.quizInputLabel.textContent = reverse ? "Type or paste the hiragana" : "Type the romaji";
+  els.quizInputLabel.textContent = reverse ? "Choose or type the hiragana" : "Type the romaji";
+  els.quizInput.inputMode = reverse ? "text" : "latin";
   els.quizInput.value = "";
+  renderKanaPad(reverse);
   els.quizMnemonic.textContent = card.mnemonic;
+}
+
+function renderKanaPad(show) {
+  els.kanaPad.hidden = !show;
+  els.kanaPad.innerHTML = "";
+  if (!show) return;
+  activeCards().forEach((card) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = card.kana;
+    button.setAttribute("aria-label", `Use ${card.kana}`);
+    button.addEventListener("click", () => {
+      els.quizInput.value = card.kana;
+      els.quizInput.focus();
+    });
+    els.kanaPad.append(button);
+  });
 }
 
 function renderProgress() {
@@ -857,7 +877,7 @@ els.sessionChoices.forEach((button) => {
 
 els.sessionPracticeTyping.addEventListener("click", () => {
   state.quizCard = state.sessionCard;
-  state.quizMode = "kanaToRomaji";
+  state.quizMode = "romajiToKana";
   setView("quiz");
   renderQuiz();
   els.quizInput.focus();
@@ -892,8 +912,7 @@ els.againCard.addEventListener("click", () => {
 });
 
 els.goodCard.addEventListener("click", () => {
-  const skill = state.flashcardMode === "kanaToRomaji" ? "recognized" : "recalled";
-  recordAnswer(state.learnCard.kana, 4, { rerender: false, skill });
+  recordAnswer(state.learnCard.kana, 4, { rerender: false, skill: "seen" });
   state.learnCard = pickCard();
   renderAll();
 });
