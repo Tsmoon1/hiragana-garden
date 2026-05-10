@@ -140,6 +140,12 @@ h2 {
   padding: 0 12px;
 }
 
+.inline-action {
+  min-height: 30px;
+  margin-left: 8px;
+  padding: 0 10px;
+}
+
 .icon-button {
   width: 42px;
   padding: 0;
@@ -412,6 +418,13 @@ h2 {
   font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
   font-size: 9rem;
   line-height: 1;
+}
+
+.kana.romaji-front {
+  font-family: inherit;
+  color: var(--sakura-deep);
+  font-size: 5rem;
+  font-weight: 850;
 }
 
 .answer {

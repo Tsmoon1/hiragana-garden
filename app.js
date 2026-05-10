@@ -133,6 +133,7 @@ const state = {
   view: "today",
   activeRowId: "a",
   quizMode: "kanaToRomaji",
+  flashcardMode: "kanaToRomaji",
   sessionMode: "new",
   sessionCard: null,
   learnCard: null,
@@ -169,6 +170,7 @@ const els = {
   learnMnemonic: document.querySelector("#learnMnemonic"),
   learnRow: document.querySelector("#learnRow"),
   learnStatus: document.querySelector("#learnStatus"),
+  swapFlashcardMode: document.querySelector("#swapFlashcardMode"),
   againCard: document.querySelector("#againCard"),
   goodCard: document.querySelector("#goodCard"),
   quizModeLabel: document.querySelector("#quizModeLabel"),
@@ -549,11 +551,13 @@ function renderRows() {
 function renderLearn() {
   state.learnCard ||= pickCard();
   const card = state.learnCard;
-  els.learnKana.textContent = card.kana;
-  els.learnAnswer.textContent = card.romaji;
+  const reverse = state.flashcardMode === "romajiToKana";
+  els.learnKana.textContent = reverse ? card.romaji : card.kana;
+  els.learnAnswer.textContent = reverse ? card.kana : card.romaji;
+  els.learnKana.classList.toggle("romaji-front", reverse);
   els.learnAnswer.classList.add("hidden");
   els.learnMnemonic.textContent = card.mnemonic;
-  els.learnRow.textContent = card.rowName;
+  els.learnRow.textContent = reverse ? "Romaji to hiragana" : "Hiragana to romaji";
   els.learnStatus.textContent = statusFor(card.kana);
 }
 
@@ -875,6 +879,12 @@ els.flashcard.addEventListener("click", () => {
   els.learnAnswer.classList.toggle("hidden");
 });
 
+els.swapFlashcardMode.addEventListener("click", (event) => {
+  event.stopPropagation();
+  state.flashcardMode = state.flashcardMode === "kanaToRomaji" ? "romajiToKana" : "kanaToRomaji";
+  renderLearn();
+});
+
 els.againCard.addEventListener("click", () => {
   recordAnswer(state.learnCard.kana, 1, { rerender: false });
   state.learnCard = pickCard();
@@ -882,7 +892,8 @@ els.againCard.addEventListener("click", () => {
 });
 
 els.goodCard.addEventListener("click", () => {
-  recordAnswer(state.learnCard.kana, 4, { rerender: false, skill: "seen" });
+  const skill = state.flashcardMode === "kanaToRomaji" ? "recognized" : "recalled";
+  recordAnswer(state.learnCard.kana, 4, { rerender: false, skill });
   state.learnCard = pickCard();
   renderAll();
 });
