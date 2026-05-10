@@ -316,6 +316,53 @@ h2 {
   text-align: center;
 }
 
+.mastery-meter {
+  margin: 14px 0 16px;
+}
+
+.mastery-bar,
+.tile-meter {
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(102, 127, 91, 0.22);
+  border-radius: 999px;
+  background: rgba(120, 106, 117, 0.12);
+}
+
+.mastery-bar span,
+.tile-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--sakura), var(--leaf));
+  transition: width 180ms ease;
+}
+
+.mastery-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mastery-steps span {
+  min-height: 30px;
+  padding: 7px 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.68);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.mastery-steps span.done {
+  border-color: rgba(102, 127, 91, 0.42);
+  color: var(--leaf);
+  background: rgba(232, 241, 225, 0.72);
+}
+
 .stroke-guide {
   margin: 16px 0;
   padding: 14px;
@@ -572,7 +619,7 @@ button:disabled {
 }
 
 .kana-tile {
-  min-height: 100px;
+  min-height: 128px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -601,6 +648,10 @@ button:disabled {
   color: var(--muted);
 }
 
+.tile-meter {
+  margin: 8px 0 7px;
+}
+
 @media (max-width: 880px) {
   .topbar,
   .layout,
@@ -616,6 +667,10 @@ button:disabled {
 
   .stats {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .mastery-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .rows-panel {

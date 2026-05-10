@@ -16,11 +16,11 @@
         <div class="stats">
           <div>
             <span id="masteredCount">0</span>
-            <small>completed</small>
+            <small>mastered</small>
           </div>
           <div>
             <span id="dueCount">0</span>
-            <small>trouble</small>
+            <small>in progress</small>
           </div>
           <div>
             <span id="activeRowName">あ row</span>
@@ -52,7 +52,7 @@
               <article class="today-card">
                 <div class="card-meta">
                   <span>Today</span>
-                  <span id="dailyGoalText">0/5 completed</span>
+                  <span id="dailyGoalText">0/5 mastered</span>
                 </div>
                 <h2>Choose a practice path</h2>
                 <div class="choice-grid">
@@ -70,7 +70,7 @@
                   </button>
                   <button class="choice-button" data-session="review">
                     <strong>Review</strong>
-                    <span>Practice completed characters again.</span>
+                    <span>Practice characters that already have some mastery evidence.</span>
                   </button>
                   <button class="choice-button" data-session="trouble">
                     <strong>Trouble Characters</strong>
@@ -86,6 +86,12 @@
                 </div>
                 <div id="sessionCharacter" class="session-character">あ</div>
                 <div id="sessionRomaji" class="session-romaji">a</div>
+                <div class="mastery-meter" aria-label="Mastery progress">
+                  <div class="mastery-bar">
+                    <span id="sessionMasteryFill"></span>
+                  </div>
+                  <div id="sessionMasterySteps" class="mastery-steps"></div>
+                </div>
                 <p id="sessionMnemonic" class="mnemonic"></p>
                 <div class="stroke-guide">
                   <h2>Stroke Guide</h2>
@@ -95,7 +101,7 @@
                 <div class="button-row">
                   <button id="sessionPracticeTyping" class="secondary">Type It</button>
                   <button id="sessionPracticeDrawing" class="secondary">Draw It</button>
-                  <button id="sessionComplete" class="primary">Complete</button>
+                  <button id="sessionComplete" class="primary">I Studied It</button>
                 </div>
               </article>
             </div>
@@ -172,7 +178,7 @@
           <section id="progressView" class="view" aria-label="Progress">
             <div class="progress-header">
               <h2>Hiragana Progress</h2>
-              <p>Choose any row whenever you want. Completed characters stay saved in this browser.</p>
+              <p>Mastery now builds in stages: studied, recognized, recalled, drawn, and mastered.</p>
             </div>
             <section class="trouble-panel" aria-label="Trouble characters">
               <h2>Trouble Characters</h2>

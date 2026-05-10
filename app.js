@@ -113,6 +113,13 @@ const ROWS = [
 
 const STORAGE_KEY = "hiragana-garden-progress-v1";
 const CARD_IDS = ROWS.flatMap((row) => row.chars.map(([kana]) => kana));
+const MASTERY_STEPS = [
+  ["seen", "Studied"],
+  ["recognized", "Recognized"],
+  ["recalled", "Recalled"],
+  ["drawn", "Drawn"],
+  ["mastered", "Mastered"]
+];
 const DATA = new Map(
   ROWS.flatMap((row, rowIndex) =>
     row.chars.map(([kana, romaji, mnemonic]) => [
@@ -147,6 +154,8 @@ const els = {
   sessionStepLabel: document.querySelector("#sessionStepLabel"),
   sessionCharacter: document.querySelector("#sessionCharacter"),
   sessionRomaji: document.querySelector("#sessionRomaji"),
+  sessionMasteryFill: document.querySelector("#sessionMasteryFill"),
+  sessionMasterySteps: document.querySelector("#sessionMasterySteps"),
   sessionMnemonic: document.querySelector("#sessionMnemonic"),
   sessionStrokeGuide: document.querySelector("#sessionStrokeGuide"),
   sessionFeedback: document.querySelector("#sessionFeedback"),
@@ -210,6 +219,13 @@ function loadProgress() {
           state: "new",
           misses: 0,
           completedOn: "",
+          masteredOn: "",
+          evidence: {
+            seen: false,
+            recognized: false,
+            recalled: false,
+            drawn: false
+          },
           bestDraw: 0
         }
       ])
@@ -225,7 +241,9 @@ function loadProgress() {
       cards: Object.fromEntries(
         CARD_IDS.map((kana) => {
           const card = { ...base.cards[kana], ...saved.cards[kana] };
-          if (card.correct > 0) card.state = "mastered";
+          card.evidence = { ...base.cards[kana].evidence, ...saved.cards[kana]?.evidence };
+          if (!saved.cards[kana]?.evidence && card.correct > 0) card.evidence.seen = true;
+          applyMasteryState(card);
           return [kana, card];
         })
       )
@@ -278,11 +296,11 @@ function troubleCards(cards = activeCards()) {
 function sessionCards(mode = state.sessionMode) {
   const cards = activeCards();
   if (mode === "new") {
-    const unfinished = cards.filter((card) => state.progress.cards[card.kana].state !== "mastered");
+    const unfinished = cards.filter((card) => masteryLevel(state.progress.cards[card.kana]) < MASTERY_STEPS.length);
     return unfinished.length ? unfinished : cards;
   }
   if (mode === "review") {
-    const completed = cards.filter((card) => state.progress.cards[card.kana].state === "mastered");
+    const completed = cards.filter((card) => masteryLevel(state.progress.cards[card.kana]) >= 2);
     return completed.length ? completed : cards;
   }
   if (mode === "trouble") {
@@ -298,41 +316,76 @@ function pickSessionCard(mode = state.sessionMode) {
 
 function statusFor(kana) {
   const card = state.progress.cards[kana];
-  if (card.state === "mastered") return "completed";
-  if (card.state === "review") return "review";
-  if (card.attempts > 0) return "learning";
+  const level = masteryLevel(card);
+  if (level === 5) return "mastered";
+  if (level === 4) return "drawn";
+  if (level === 3) return "recalling";
+  if (level === 2) return "recognizing";
+  if (level === 1) return "introduced";
+  if (card.attempts > 0) return "practicing";
   return "new";
 }
 
 function recordAnswer(kana, quality, options = {}) {
-  const { rerender = true } = options;
+  const { rerender = true, skill = "recognized", drawScore = 0 } = options;
   const card = state.progress.cards[kana];
   const now = Date.now();
   const correct = quality >= 3;
-  const wasCompleted = card.state === "mastered";
+  const wasMastered = card.state === "mastered";
   card.attempts += 1;
   card.correct += correct ? 1 : 0;
   card.streak = correct ? card.streak + 1 : 0;
 
   if (correct) {
+    card.evidence.seen = true;
+    if (skill === "recognized") card.evidence.recognized = true;
+    if (skill === "recalled") card.evidence.recalled = true;
+    if (skill === "drawn") card.evidence.drawn = true;
+    if (skill === "seen") card.evidence.seen = true;
     card.ease = Math.max(1.4, card.ease + 0.04);
     card.interval = Math.max(1, card.interval);
     card.due = now + card.interval * 24 * 60 * 60 * 1000;
-    card.state = "mastered";
-    card.misses = 0;
-    card.completedOn ||= todayKey();
-    if (!wasCompleted) celebrate();
+    if (drawScore) card.bestDraw = Math.max(card.bestDraw, drawScore);
+    applyMasteryState(card);
+    if (card.state === "mastered") {
+      card.misses = 0;
+      card.masteredOn ||= todayKey();
+      if (!wasMastered) celebrate();
+    }
   } else {
     card.ease = Math.max(1.3, card.ease - 0.18);
     card.interval = 0;
     card.due = now + 8 * 60 * 1000;
-    card.state = wasCompleted ? "mastered" : "learning";
+    card.state = wasMastered ? "mastered" : "learning";
     card.misses += 1;
   }
 
   unlockRows();
   saveProgress();
   if (rerender) renderAll();
+}
+
+function masteryLevel(card) {
+  let level = 0;
+  if (card.evidence?.seen) level = 1;
+  if (card.evidence?.seen && card.evidence?.recognized) level = 2;
+  if (card.evidence?.seen && card.evidence?.recognized && card.evidence?.recalled) level = 3;
+  if (card.evidence?.seen && card.evidence?.recognized && card.evidence?.recalled && card.evidence?.drawn) level = 4;
+  if (level === 4) level = 5;
+  return level;
+}
+
+function applyMasteryState(card) {
+  const level = masteryLevel(card);
+  if (level === 5) {
+    card.state = "mastered";
+  } else if (level >= 2) {
+    card.state = "review";
+  } else if (level === 1 || card.attempts > 0) {
+    card.state = "learning";
+  } else {
+    card.state = "new";
+  }
 }
 
 function celebrate() {
@@ -363,26 +416,41 @@ function renderAll() {
 
 function renderStats() {
   const cards = Object.values(state.progress.cards);
-  els.masteredCount.textContent = cards.filter((card) => card.state === "mastered").length;
-  els.dueCount.textContent = troubleCards(ROWS.flatMap((row) => row.chars.map(([kana]) => DATA.get(kana)))).length;
+  els.masteredCount.textContent = cards.filter((card) => masteryLevel(card) === MASTERY_STEPS.length).length;
+  els.dueCount.textContent = cards.filter((card) => masteryLevel(card) > 0 && masteryLevel(card) < MASTERY_STEPS.length).length;
   els.activeRowName.textContent = rowById(state.activeRowId).name;
 }
 
 function renderToday() {
   state.sessionCard ||= pickSessionCard();
   const card = state.sessionCard;
-  const completedToday = Object.values(state.progress.cards).filter((progress) => progress.completedOn === todayKey()).length;
-  els.dailyGoalText.textContent = `${Math.min(completedToday, 5)}/5 completed`;
+  const masteredToday = Object.values(state.progress.cards).filter((progress) => progress.masteredOn === todayKey()).length;
+  els.dailyGoalText.textContent = `${Math.min(masteredToday, 5)}/5 mastered`;
   els.sessionModeLabel.textContent = modeLabel(state.sessionMode);
   els.sessionStepLabel.textContent = `${card.rowName} · ${statusFor(card.kana)}`;
   els.sessionCharacter.textContent = card.kana;
   els.sessionRomaji.textContent = card.romaji;
+  renderMasteryMeter(state.progress.cards[card.kana], els.sessionMasteryFill, els.sessionMasterySteps);
   els.sessionMnemonic.textContent = card.mnemonic;
   els.sessionStrokeGuide.textContent = strokeGuideFor(card.kana);
   els.sessionChoices.forEach((button) => button.classList.toggle("active", button.dataset.session === state.sessionMode));
   if (!els.sessionFeedback.textContent) {
     els.sessionFeedback.textContent = "Start with the character, then type or draw it when ready.";
   }
+}
+
+function renderMasteryMeter(progress, fillEl, stepsEl) {
+  const level = masteryLevel(progress);
+  fillEl.style.width = `${(level / MASTERY_STEPS.length) * 100}%`;
+  stepsEl.innerHTML = "";
+  MASTERY_STEPS.forEach(([key, label], index) => {
+    const done = index < level;
+    const item = document.createElement("span");
+    item.className = done ? "done" : "";
+    item.textContent = done ? `${label} ✓` : label;
+    if (key === "mastered" && level < MASTERY_STEPS.length) item.textContent = "Mastered";
+    stepsEl.append(item);
+  });
 }
 
 function modeLabel(mode) {
@@ -450,7 +518,9 @@ function strokeGuideFor(kana) {
 function renderRows() {
   els.rowList.innerHTML = "";
   ROWS.forEach((row) => {
-    const mastered = row.chars.filter(([kana]) => state.progress.cards[kana].state === "mastered").length;
+    const mastered = row.chars.filter(([kana]) => masteryLevel(state.progress.cards[kana]) === MASTERY_STEPS.length).length;
+    const rowLevel = row.chars.reduce((sum, [kana]) => sum + masteryLevel(state.progress.cards[kana]), 0);
+    const rowMax = row.chars.length * MASTERY_STEPS.length;
     const done = mastered === row.chars.length;
     const button = document.createElement("button");
     button.className = `row-button ${row.id === state.activeRowId ? "active" : ""} ${done ? "done" : ""}`;
@@ -459,6 +529,7 @@ function renderRows() {
       <span>
         <strong>${row.name}</strong>
         <small>${row.chars.map(([kana]) => kana).join(" ")}</small>
+        <small>${Math.round((rowLevel / rowMax) * 100)}% mastery</small>
       </span>
       <span class="row-pill">${done ? "✓" : `${mastered}/${row.chars.length}`}</span>
     `;
@@ -504,17 +575,32 @@ function renderProgress() {
   ROWS.forEach((row) => {
     row.chars.forEach(([kana, romaji]) => {
       const progress = state.progress.cards[kana];
+      const level = masteryLevel(progress);
       const tile = document.createElement("article");
       tile.className = `kana-tile ${progress.state}`;
       tile.innerHTML = `
         <strong>${kana}</strong>
         <span>${romaji}</span>
-        <small>${statusFor(kana)} · misses ${progress.misses}</small>
-        <small>draw best ${Math.round(progress.bestDraw)}%</small>
+        <div class="tile-meter"><span style="width: ${(level / MASTERY_STEPS.length) * 100}%"></span></div>
+        <small>${statusFor(kana)} · ${level}/${MASTERY_STEPS.length}</small>
+        <small>${masteryChecklist(progress)}</small>
+        <small>misses ${progress.misses} · draw ${Math.round(progress.bestDraw)}%</small>
       `;
       els.progressGrid.append(tile);
     });
   });
+}
+
+function masteryChecklist(progress) {
+  const evidence = progress.evidence || {};
+  return [
+    evidence.seen ? "study" : "study",
+    evidence.recognized ? "recognize" : "recognize",
+    evidence.recalled ? "recall" : "recall",
+    evidence.drawn ? "draw" : "draw"
+  ]
+    .map((label, index) => `${MASTERY_STEPS[index][0] in evidence && evidence[MASTERY_STEPS[index][0]] ? "✓" : "○"} ${label}`)
+    .join("  ");
 }
 
 function renderTrouble() {
@@ -675,14 +761,14 @@ function checkDrawing() {
 
   if (score >= 95) {
     els.drawFeedback.className = "feedback good";
-    els.drawFeedback.textContent = "95% reached. Completed.";
+    els.drawFeedback.textContent = "95% reached. Drawing evidence added.";
     els.nextDrawing.disabled = false;
     if (!draw.completed) {
       draw.completed = true;
-      recordAnswer(state.drawCard.kana, 5, { rerender: false });
+      recordAnswer(state.drawCard.kana, 5, { rerender: false, skill: "drawn", drawScore: score });
       if (state.sessionCard?.kana === state.drawCard.kana) {
         els.sessionFeedback.className = "feedback good";
-        els.sessionFeedback.textContent = `${state.drawCard.kana} completed from drawing practice.`;
+        els.sessionFeedback.textContent = `${state.drawCard.kana} drawing evidence added.`;
       }
     }
   } else if (score >= 75) {
@@ -779,10 +865,9 @@ els.sessionPracticeDrawing.addEventListener("click", () => {
 });
 
 els.sessionComplete.addEventListener("click", () => {
-  recordAnswer(state.sessionCard.kana, 5, { rerender: false });
+  recordAnswer(state.sessionCard.kana, 5, { rerender: false, skill: "seen" });
   els.sessionFeedback.className = "feedback good";
-  els.sessionFeedback.textContent = `${state.sessionCard.kana} completed.`;
-  state.sessionCard = pickSessionCard();
+  els.sessionFeedback.textContent = `${state.sessionCard.kana} studied. Add typing and drawing to prove mastery.`;
   renderAll();
 });
 
@@ -797,7 +882,7 @@ els.againCard.addEventListener("click", () => {
 });
 
 els.goodCard.addEventListener("click", () => {
-  recordAnswer(state.learnCard.kana, 4, { rerender: false });
+  recordAnswer(state.learnCard.kana, 4, { rerender: false, skill: "seen" });
   state.learnCard = pickCard();
   renderAll();
 });
@@ -816,11 +901,14 @@ els.quizForm.addEventListener("submit", (event) => {
   const expected = state.quizMode === "kanaToRomaji" ? card.romaji : card.kana;
   const correct = normalizeAnswer(els.quizInput.value) === normalizeAnswer(expected);
   els.quizFeedback.className = `feedback ${correct ? "good" : "miss"}`;
-  els.quizFeedback.textContent = correct ? "Correct. Completed." : `Not quite. Answer: ${expected}`;
-  recordAnswer(card.kana, correct ? 5 : 1, { rerender: false });
+  const skill = state.quizMode === "kanaToRomaji" ? "recognized" : "recalled";
+  els.quizFeedback.textContent = correct
+    ? `Correct. ${skill === "recognized" ? "Recognition" : "Recall"} evidence added.`
+    : `Not quite. Answer: ${expected}`;
+  recordAnswer(card.kana, correct ? 5 : 1, { rerender: false, skill });
   if (state.sessionCard?.kana === card.kana) {
     els.sessionFeedback.className = `feedback ${correct ? "good" : "miss"}`;
-    els.sessionFeedback.textContent = correct ? `${card.kana} completed from typing practice.` : `${card.kana} needs another try.`;
+    els.sessionFeedback.textContent = correct ? `${card.kana} ${skill === "recognized" ? "recognized" : "recalled"}.` : `${card.kana} needs another try.`;
   }
   state.quizCard = pickCard();
   renderStats();
