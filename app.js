@@ -264,8 +264,17 @@ function rowById(rowId) {
   return ROWS.find((row) => row.id === rowId) || ROWS[0];
 }
 
+function rowIndexById(rowId) {
+  return Math.max(0, ROWS.findIndex((row) => row.id === rowId));
+}
+
+function cardsThroughRow(rowId) {
+  const rowIndex = rowIndexById(rowId);
+  return ROWS.slice(0, rowIndex + 1).flatMap((row) => row.chars.map(([kana]) => DATA.get(kana)));
+}
+
 function activeCards() {
-  return rowById(state.activeRowId).chars.map(([kana]) => DATA.get(kana));
+  return cardsThroughRow(state.activeRowId);
 }
 
 function dueCards(cards = activeCards()) {
@@ -421,7 +430,7 @@ function renderStats() {
   const cards = Object.values(state.progress.cards);
   els.masteredCount.textContent = cards.filter((card) => masteryLevel(card) === MASTERY_STEPS.length).length;
   els.dueCount.textContent = cards.filter((card) => masteryLevel(card) > 0 && masteryLevel(card) < MASTERY_STEPS.length).length;
-  els.activeRowName.textContent = rowById(state.activeRowId).name;
+  els.activeRowName.textContent = `through ${rowById(state.activeRowId).name}`;
 }
 
 function renderToday() {
@@ -521,20 +530,21 @@ function strokeGuideFor(kana) {
 function renderRows() {
   els.rowList.innerHTML = "";
   ROWS.forEach((row) => {
-    const mastered = row.chars.filter(([kana]) => masteryLevel(state.progress.cards[kana]) === MASTERY_STEPS.length).length;
-    const rowLevel = row.chars.reduce((sum, [kana]) => sum + masteryLevel(state.progress.cards[kana]), 0);
-    const rowMax = row.chars.length * MASTERY_STEPS.length;
-    const done = mastered === row.chars.length;
+    const scopeCards = cardsThroughRow(row.id);
+    const mastered = scopeCards.filter((card) => masteryLevel(state.progress.cards[card.kana]) === MASTERY_STEPS.length).length;
+    const rowLevel = scopeCards.reduce((sum, card) => sum + masteryLevel(state.progress.cards[card.kana]), 0);
+    const rowMax = scopeCards.length * MASTERY_STEPS.length;
+    const done = mastered === scopeCards.length;
     const button = document.createElement("button");
     button.className = `row-button ${row.id === state.activeRowId ? "active" : ""} ${done ? "done" : ""}`;
     button.disabled = false;
     button.innerHTML = `
       <span>
-        <strong>${row.name}</strong>
+        <strong>Through ${row.name}</strong>
         <small>${row.chars.map(([kana]) => kana).join(" ")}</small>
-        <small>${Math.round((rowLevel / rowMax) * 100)}% mastery</small>
+        <small>${scopeCards.length} kana · ${Math.round((rowLevel / rowMax) * 100)}% cumulative mastery</small>
       </span>
-      <span class="row-pill">${done ? "✓" : `${mastered}/${row.chars.length}`}</span>
+      <span class="row-pill">${done ? "✓" : `${mastered}/${scopeCards.length}`}</span>
     `;
     button.addEventListener("click", () => {
       state.activeRowId = row.id;
