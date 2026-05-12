@@ -133,10 +133,12 @@ const state = {
   view: "today",
   activeRowId: "a",
   quizMode: "kanaToRomaji",
+  flashcardDeck: "kana",
   flashcardMode: "kanaToRomaji",
   sessionMode: "new",
   sessionCard: null,
   learnCard: null,
+  wordCard: null,
   quizCard: null,
   drawCard: null,
   progress: loadProgress()
@@ -170,9 +172,16 @@ const els = {
   learnMnemonic: document.querySelector("#learnMnemonic"),
   learnRow: document.querySelector("#learnRow"),
   learnStatus: document.querySelector("#learnStatus"),
+  swapFlashcardDeck: document.querySelector("#swapFlashcardDeck"),
   swapFlashcardMode: document.querySelector("#swapFlashcardMode"),
   againCard: document.querySelector("#againCard"),
   goodCard: document.querySelector("#goodCard"),
+  wordForm: document.querySelector("#wordForm"),
+  wordJapanese: document.querySelector("#wordJapanese"),
+  wordReading: document.querySelector("#wordReading"),
+  wordMeaning: document.querySelector("#wordMeaning"),
+  wordCount: document.querySelector("#wordCount"),
+  wordList: document.querySelector("#wordList"),
   quizModeLabel: document.querySelector("#quizModeLabel"),
   swapQuizMode: document.querySelector("#swapQuizMode"),
   quizPrompt: document.querySelector("#quizPrompt"),
@@ -209,6 +218,7 @@ const draw = {
 function loadProgress() {
   const base = {
     unlockedRows: ["a"],
+    customWords: [],
     cards: Object.fromEntries(
     CARD_IDS.map((kana) => [
       kana,
@@ -241,6 +251,7 @@ function loadProgress() {
     if (!saved || !saved.cards) return base;
     return {
       unlockedRows: ROWS.map((row) => row.id),
+      customWords: Array.isArray(saved.customWords) ? saved.customWords : [],
       cards: Object.fromEntries(
         CARD_IDS.map((kana) => {
           const card = { ...base.cards[kana], ...saved.cards[kana] };
@@ -421,6 +432,7 @@ function renderAll() {
   renderRows();
   renderStats();
   renderLearn();
+  renderWordManager();
   renderQuiz();
   renderProgress();
   if (state.view === "draw") renderDrawCard();
@@ -560,9 +572,17 @@ function renderRows() {
 }
 
 function renderLearn() {
+  if (state.flashcardDeck === "words") {
+    state.wordCard ||= pickWordCard();
+    renderWordFlashcard(state.wordCard);
+    return;
+  }
   state.learnCard ||= pickCard();
   const card = state.learnCard;
   const reverse = state.flashcardMode === "romajiToKana";
+  els.swapFlashcardDeck.textContent = "Words";
+  els.swapFlashcardMode.disabled = false;
+  els.learnKana.classList.remove("word-front");
   els.learnKana.textContent = reverse ? card.romaji : card.kana;
   els.learnAnswer.textContent = reverse ? card.kana : card.romaji;
   els.learnKana.classList.toggle("romaji-front", reverse);
@@ -570,6 +590,62 @@ function renderLearn() {
   els.learnMnemonic.textContent = card.mnemonic;
   els.learnRow.textContent = reverse ? "Romaji to hiragana" : "Hiragana to romaji";
   els.learnStatus.textContent = statusFor(card.kana);
+}
+
+function renderWordFlashcard(card) {
+  els.swapFlashcardDeck.textContent = "Kana";
+  els.swapFlashcardMode.disabled = true;
+  els.learnKana.classList.remove("romaji-front");
+  els.learnKana.classList.add("word-front");
+  els.learnAnswer.classList.add("hidden");
+  els.learnRow.textContent = "Custom word deck";
+  if (!card) {
+    els.learnKana.textContent = "Words";
+    els.learnAnswer.textContent = "Add a word below to start this deck.";
+    els.learnMnemonic.textContent = "Custom words stay saved in this browser.";
+    els.learnStatus.textContent = "empty";
+    return;
+  }
+  els.learnKana.textContent = card.japanese;
+  els.learnAnswer.textContent = [card.reading, card.meaning].filter(Boolean).join(" · ");
+  els.learnMnemonic.textContent = card.meaning ? `Meaning: ${card.meaning}` : "Custom vocabulary card.";
+  els.learnStatus.textContent = card.known ? "known" : "learning";
+}
+
+function pickWordCard() {
+  const words = state.progress.customWords;
+  if (!words.length) return null;
+  return words.slice().sort((a, b) => (a.known === b.known ? a.attempts - b.attempts : Number(a.known) - Number(b.known)))[0];
+}
+
+function renderWordManager() {
+  const words = state.progress.customWords;
+  els.wordCount.textContent = `${words.length} ${words.length === 1 ? "word" : "words"}`;
+  els.wordList.innerHTML = "";
+  if (!words.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "No custom words yet.";
+    els.wordList.append(empty);
+    return;
+  }
+  words.forEach((word) => {
+    const item = document.createElement("div");
+    item.className = "word-list-item";
+    const text = document.createElement("span");
+    text.textContent = `${word.japanese} · ${word.reading || "no reading"} · ${word.meaning || "no meaning"}`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "secondary small";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      state.progress.customWords = state.progress.customWords.filter((entry) => entry.id !== word.id);
+      if (state.wordCard?.id === word.id) state.wordCard = pickWordCard();
+      saveProgress();
+      renderAll();
+    });
+    item.append(text, remove);
+    els.wordList.append(item);
+  });
 }
 
 function renderQuiz() {
@@ -909,21 +985,67 @@ els.flashcard.addEventListener("click", () => {
   els.learnAnswer.classList.toggle("hidden");
 });
 
+els.swapFlashcardDeck.addEventListener("click", (event) => {
+  event.stopPropagation();
+  state.flashcardDeck = state.flashcardDeck === "kana" ? "words" : "kana";
+  els.learnAnswer.classList.add("hidden");
+  renderLearn();
+});
+
 els.swapFlashcardMode.addEventListener("click", (event) => {
   event.stopPropagation();
+  if (state.flashcardDeck === "words") return;
   state.flashcardMode = state.flashcardMode === "kanaToRomaji" ? "romajiToKana" : "kanaToRomaji";
   renderLearn();
 });
 
 els.againCard.addEventListener("click", () => {
+  if (state.flashcardDeck === "words") {
+    if (state.wordCard) state.wordCard.attempts += 1;
+    state.wordCard = pickWordCard();
+    saveProgress();
+    renderAll();
+    return;
+  }
   recordAnswer(state.learnCard.kana, 1, { rerender: false });
   state.learnCard = pickCard();
   renderAll();
 });
 
 els.goodCard.addEventListener("click", () => {
+  if (state.flashcardDeck === "words") {
+    if (state.wordCard) {
+      state.wordCard.attempts += 1;
+      state.wordCard.known = true;
+    }
+    state.wordCard = pickWordCard();
+    saveProgress();
+    renderAll();
+    return;
+  }
   recordAnswer(state.learnCard.kana, 4, { rerender: false, skill: "seen" });
   state.learnCard = pickCard();
+  renderAll();
+});
+
+els.wordForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const japanese = els.wordJapanese.value.trim();
+  const reading = els.wordReading.value.trim();
+  const meaning = els.wordMeaning.value.trim();
+  if (!japanese || !meaning) return;
+  state.progress.customWords.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    japanese,
+    reading,
+    meaning,
+    attempts: 0,
+    known: false
+  });
+  els.wordForm.reset();
+  state.flashcardDeck = "words";
+  state.wordCard = pickWordCard();
+  saveProgress();
   renderAll();
 });
 
@@ -981,6 +1103,7 @@ els.resetProgress.addEventListener("click", () => {
   state.sessionMode = "new";
   state.sessionCard = pickSessionCard();
   state.learnCard = pickCard();
+  state.wordCard = pickWordCard();
   state.quizCard = pickCard();
   state.drawCard = pickCard();
   renderAll();

@@ -114,6 +114,7 @@
                   <span id="learnRow">あ row</span>
                   <span>
                     <span id="learnStatus">new</span>
+                    <button id="swapFlashcardDeck" class="secondary small inline-action">Words</button>
                     <button id="swapFlashcardMode" class="secondary small inline-action">Swap</button>
                   </span>
                 </div>
@@ -126,6 +127,22 @@
                   <button id="againCard" class="secondary">Again</button>
                   <button id="goodCard" class="primary">I knew it</button>
                 </div>
+              </article>
+              <article class="word-card">
+                <div class="card-meta">
+                  <h2>Custom Words</h2>
+                  <span id="wordCount">0 words</span>
+                </div>
+                <form id="wordForm" class="word-form" autocomplete="off">
+                  <label for="wordJapanese">Japanese word</label>
+                  <input id="wordJapanese" name="japanese" type="text" placeholder="例: ねこ" />
+                  <label for="wordReading">Reading or romaji</label>
+                  <input id="wordReading" name="reading" type="text" placeholder="neko" />
+                  <label for="wordMeaning">Meaning</label>
+                  <input id="wordMeaning" name="meaning" type="text" placeholder="cat" />
+                  <button class="primary" type="submit">Add Word</button>
+                </form>
+                <div id="wordList" class="word-list" aria-label="Custom word list"></div>
               </article>
             </div>
           </section>

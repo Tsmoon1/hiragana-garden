@@ -259,6 +259,7 @@ h2 {
 .quiz-card,
 .hint-card,
 .draw-card,
+.word-card,
 .today-card,
 .guided-card {
   border: 1px solid var(--line);
@@ -392,6 +393,11 @@ h2 {
   padding: 22px;
 }
 
+.word-card {
+  width: min(520px, 100%);
+  padding: 20px;
+}
+
 .card-meta {
   display: flex;
   align-items: center;
@@ -425,6 +431,10 @@ h2 {
   color: var(--sakura-deep);
   font-size: 5rem;
   font-weight: 850;
+}
+
+.kana.word-front {
+  font-size: 5rem;
 }
 
 .answer {
@@ -493,6 +503,43 @@ form {
   grid-template-columns: 1fr auto;
   gap: 10px;
   align-items: end;
+}
+
+.word-form {
+  grid-template-columns: 1fr;
+}
+
+.word-form button {
+  width: 100%;
+}
+
+.word-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.word-list p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.word-list-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 46px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.word-list-item span {
+  min-width: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .kana-pad {
@@ -729,6 +776,7 @@ button:disabled {
   .quiz-card,
   .draw-card,
   .hint-card,
+  .word-card,
   .study-card {
     padding: 14px;
   }
